@@ -1,0 +1,17 @@
+### 1. Verificar que el servidor está vivo (Healthcheck)
+GET http://localhost:5000/api/health
+
+### 2. Obtener todos los eventos guardados
+GET http://localhost:5000/api/eventos
+
+### 3. Registrar un nuevo evento del robot (Simulación Arduino)
+POST http://localhost:5000/api/eventos
+Content-Type: application/json
+
+{
+  "tipo_accion": "cubo_resuelto",
+  "grados_motor": 90,
+  "cara_cubo": "Frontal",
+  "cantidad_movimientos": 42,
+  "tiempo_armado_segundos": 15.5
+}

@@ -12,7 +12,16 @@ docker-compose up -d --build
 ```
 ---
 ###  Documentación de la API (Endpoints)
+## 🛠️ Tecnologías Utilizadas
 
+| Tecnología | Uso en el Proyecto |
+| :--- | :--- |
+| **Node.js** | Entorno de ejecución para el Backend |
+| **Express** | Framework para exponer la API REST |
+| **MongoDB** | Persistencia de datos NoSQL |
+| **Mongoose**| ODM para modelado y validación de esquemas |
+| **Docker** | Contenerización del servicio |
+---
 La API expone las siguientes rutas bajo la URL base:
 
 ```text
