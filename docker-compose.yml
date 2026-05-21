@@ -1,18 +1,36 @@
-version: '3'
+version: '3.8'
 
 services:
 
-  backend:
-    build: ./backend
-    ports:
-      - "5000:5000"
-
-  frontend:
-    build: ./frontend
-    ports:
-      - "3000:3000"
-
   mongodb:
-    image: mongo
+    image: mongo:4.4
+    container_name: mongodb
+    restart: always
     ports:
       - "27017:27017"
+
+  backend:
+    image: node:18
+    container_name: backend
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+    command: sh -c "npm install && npm start"
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+    restart: always
+
+  frontend:
+    image: node:18
+    container_name: frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    command: sh -c "npm install && npm start"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: always
