@@ -10,7 +10,7 @@ services:
       - "27017:27017"
 
   backend:
-    image: node:18
+    image: node:20-alpine
     container_name: backend
     working_dir: /app
     volumes:
@@ -23,7 +23,7 @@ services:
     restart: always
 
   frontend:
-    image: node:18
+    image: node:20-alpine
     container_name: frontend
     working_dir: /app
     volumes:
