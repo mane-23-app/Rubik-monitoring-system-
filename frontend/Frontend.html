@@ -1,0 +1,784 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Rubik Monitor — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg2: #111318;
+    --bg3: #1a1d24;
+    --card: #161920;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --accent: #00e5a0;
+    --accent2: #00b37a;
+    --accent-dim: rgba(0,229,160,0.1);
+    --accent-dim2: rgba(0,229,160,0.05);
+    --red: #ff4d6d;
+    --red-dim: rgba(255,77,109,0.1);
+    --amber: #ffb347;
+    --amber-dim: rgba(255,179,71,0.1);
+    --blue: #4da6ff;
+    --blue-dim: rgba(77,166,255,0.1);
+    --text: #e8eaf0;
+    --text2: #8890a4;
+    --text3: #555e72;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    text-decoration: none;
+    letter-spacing: -0.5px;
+  }
+  .logo-cube {
+    width: 32px; height: 32px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+    padding: 4px;
+    background: var(--bg3);
+    border-radius: 8px;
+    border: 1px solid var(--border2);
+  }
+  .cube-cell { border-radius: 2px; }
+  .c1 { background: #ff4d6d; } .c2 { background: #ffb347; } .c3 { background: #4da6ff; }
+  .c4 { background: #00e5a0; } .c5 { background: #fff; } .c6 { background: #ffb347; }
+  .c7 { background: #4da6ff; } .c8 { background: #ff4d6d; } .c9 { background: #00e5a0; }
+
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .status-dot {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; color: var(--text2); font-family: var(--mono);
+  }
+  .dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s infinite;
+  }
+  .dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.4;} }
+
+  .ip-badge {
+    font-family: var(--mono); font-size: 11px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 6px; padding: 5px 10px; color: var(--text2);
+    cursor: pointer; transition: border-color 0.2s;
+  }
+  .ip-badge:hover { border-color: var(--accent); color: var(--accent); }
+  .ip-badge input {
+    background: none; border: none; outline: none; color: inherit;
+    font-family: inherit; font-size: inherit; width: 140px; text-align: center;
+  }
+
+  .btn-refresh {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--accent-dim); border: 1px solid var(--accent);
+    color: var(--accent); border-radius: var(--radius-sm); padding: 6px 14px;
+    font-family: var(--mono); font-size: 11px; cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  .btn-refresh:hover { background: rgba(0,229,160,0.18); }
+  .btn-refresh:active { transform: scale(0.97); }
+  .btn-refresh.spinning svg { animation: spin 0.7s linear; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* LAYOUT */
+  .main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+  /* METRICS GRID */
+  .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
+  .metric-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 18px 20px; position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .metric-card:hover { border-color: var(--border2); transform: translateY(-1px); }
+  .metric-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  }
+  .metric-card.green::before { background: var(--accent); }
+  .metric-card.red::before { background: var(--red); }
+  .metric-card.amber::before { background: var(--amber); }
+  .metric-card.blue::before { background: var(--blue); }
+
+  .metric-label { font-size: 11px; color: var(--text3); font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+  .metric-value { font-size: 28px; font-family: var(--mono); font-weight: 700; line-height: 1; }
+  .metric-value.green { color: var(--accent); }
+  .metric-value.red { color: var(--red); }
+  .metric-value.amber { color: var(--amber); }
+  .metric-value.blue { color: var(--blue); }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 6px; font-family: var(--mono); }
+
+  /* GRID LAYOUT */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .grid-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+
+  /* PANEL */
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+  }
+  .panel-title { font-size: 12px; font-family: var(--mono); color: var(--text2); text-transform: uppercase; letter-spacing: 1px; }
+  .panel-body { padding: 18px; }
+
+  /* CHART */
+  .chart-wrap { position: relative; width: 100%; height: 220px; }
+
+  /* LOG TABLE */
+  .log-table { width: 100%; border-collapse: collapse; }
+  .log-table th {
+    font-size: 10px; font-family: var(--mono); color: var(--text3);
+    text-transform: uppercase; letter-spacing: 1px; padding: 0 12px 10px;
+    text-align: left; border-bottom: 1px solid var(--border);
+  }
+  .log-table td {
+    padding: 10px 12px; font-size: 12px; border-bottom: 1px solid var(--border);
+    font-family: var(--mono); color: var(--text2);
+    transition: background 0.15s;
+  }
+  .log-table tr:hover td { background: rgba(255,255,255,0.02); }
+  .log-table tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 4px; font-size: 10px;
+    font-family: var(--mono); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .badge.solved { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,229,160,0.2); }
+  .badge.move { background: var(--blue-dim); color: var(--blue); border: 1px solid rgba(77,166,255,0.2); }
+  .badge.error { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,109,0.2); }
+  .badge.calibrate { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,179,71,0.2); }
+
+  /* CUBE VIS */
+  .cube-3d-wrap { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 10px 0; }
+  .face-grid { display: flex; flex-direction: column; gap: 2px; }
+  .face-row { display: flex; gap: 2px; }
+  .face-cell {
+    width: 22px; height: 22px; border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.3);
+    transition: all 0.3s ease;
+  }
+  .face-label { font-size: 10px; font-family: var(--mono); color: var(--text3); text-align: center; margin-top: 4px; }
+
+  .faces-layout { display: grid; grid-template-columns: 68px 68px 68px 68px; grid-template-rows: 68px 68px 68px; gap: 3px; }
+  .face-wrap { border: 1px solid var(--border); border-radius: 6px; padding: 4px; }
+
+  /* ACTIVITY BARS */
+  .activity-bar { display: flex; align-items: flex-end; gap: 3px; height: 60px; padding: 8px 0; }
+  .a-bar { flex: 1; min-width: 0; border-radius: 3px 3px 0 0; background: var(--accent-dim2); border-top: 1px solid var(--accent); transition: height 0.5s ease, background 0.3s; cursor: pointer; }
+  .a-bar:hover { background: var(--accent-dim); }
+  .a-bar.empty { border-color: var(--border2); background: var(--bg3); }
+
+  /* PROGRESS */
+  .progress-bar { width: 100%; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; margin-top: 8px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.8s ease; }
+
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); font-family: var(--mono); font-size: 12px; }
+  .empty-state svg { margin-bottom: 12px; opacity: 0.3; }
+
+  /* TOAST */
+  #toast {
+    position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+    background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm);
+    padding: 10px 16px; font-family: var(--mono); font-size: 12px; color: var(--text2);
+    transform: translateY(80px); opacity: 0; transition: all 0.3s ease;
+    max-width: 320px;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+  #toast.ok { border-color: var(--accent); color: var(--accent); }
+  #toast.err { border-color: var(--red); color: var(--red); }
+
+  /* SERVER STATUS */
+  .server-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .server-row:last-child { border-bottom: none; }
+  .server-name { font-family: var(--mono); font-size: 12px; color: var(--text2); }
+  .server-url { font-family: var(--mono); font-size: 10px; color: var(--text3); margin-top: 2px; }
+  .server-status { font-family: var(--mono); font-size: 11px; display: flex; align-items: center; gap: 6px; }
+
+  /* LOADER */
+  .loader { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+
+  /* RESPONSIVE */
+  @media (max-width: 1000px) {
+    .metrics { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 600px) {
+    .metrics { grid-template-columns: 1fr 1fr; }
+    header { padding: 14px 16px; }
+    .main { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="#" class="logo">
+    <div class="logo-cube">
+      <div class="cube-cell c1"></div><div class="cube-cell c2"></div><div class="cube-cell c3"></div>
+      <div class="cube-cell c4"></div><div class="cube-cell c5"></div><div class="cube-cell c6"></div>
+      <div class="cube-cell c7"></div><div class="cube-cell c8"></div><div class="cube-cell c9"></div>
+    </div>
+    RUBIK_MONITOR
+  </a>
+  <div class="header-right">
+    <div class="ip-badge" title="Haz clic para editar la IP del servidor">
+      <span style="color: var(--text3); margin-right: 4px;">HOST</span>
+      <input type="text" id="serverIp" value="localhost" placeholder="IP del servidor" />
+      <span style="color: var(--text3);">:5000</span>
+    </div>
+    <div class="status-dot">
+      <div class="dot" id="connDot"></div>
+      <span id="connText" style="font-size:11px;">CONECTANDO...</span>
+    </div>
+    <button class="btn-refresh" id="btnRefresh" onclick="loadData()">
+      <svg id="refreshIcon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      ACTUALIZAR
+    </button>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- METRICS -->
+  <div class="metrics">
+    <div class="metric-card green">
+      <div class="metric-label">Cubos Resueltos</div>
+      <div class="metric-value green" id="metSolved">—</div>
+      <div class="metric-sub" id="metSolvedSub">total acumulado</div>
+    </div>
+    <div class="metric-card blue">
+      <div class="metric-label">Tiempo Promedio</div>
+      <div class="metric-value blue" id="metAvgTime">—</div>
+      <div class="metric-sub">segundos por cubo</div>
+    </div>
+    <div class="metric-card amber">
+      <div class="metric-label">Movimientos Prom.</div>
+      <div class="metric-value amber" id="metAvgMoves">—</div>
+      <div class="metric-sub">por resolución</div>
+    </div>
+    <div class="metric-card red">
+      <div class="metric-label">Último Evento</div>
+      <div class="metric-value" id="metLast" style="font-size:13px; padding-top: 6px;">—</div>
+      <div class="metric-sub" id="metLastSub">—</div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW -->
+  <div class="grid-3">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Tiempo de Armado por Evento</span>
+        <span style="font-size:10px; font-family: var(--mono); color: var(--text3);" id="chartCount">0 eventos</span>
+      </div>
+      <div class="panel-body">
+        <div class="chart-wrap">
+          <canvas id="timeChart" role="img" aria-label="Gráfica de tiempo de armado por evento"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Tipos de Acción</span>
+      </div>
+      <div class="panel-body">
+        <div class="chart-wrap" style="height: 180px;">
+          <canvas id="typeChart" role="img" aria-label="Distribución de tipos de acción"></canvas>
+        </div>
+        <div id="typeLegend" style="margin-top: 12px; display: flex; flex-direction: column; gap: 6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABLE + CUBE VIS -->
+  <div class="grid-2">
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Log de Eventos</span>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <select id="filterType" style="background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); border-radius: 6px; padding: 4px 8px; font-family: var(--mono); font-size: 10px; cursor: pointer;">
+            <option value="">TODOS</option>
+            <option value="cubo_resuelto">CUBO_RESUELTO</option>
+            <option value="movimiento">MOVIMIENTO</option>
+            <option value="error">ERROR</option>
+            <option value="calibracion">CALIBRACIÓN</option>
+          </select>
+        </div>
+      </div>
+      <div style="overflow-y: auto; max-height: 340px;">
+        <table class="log-table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Cara</th>
+              <th>Grados</th>
+              <th>Movs.</th>
+              <th>Tiempo (s)</th>
+              <th>Timestamp</th>
+            </tr>
+          </thead>
+          <tbody id="logBody">
+            <tr><td colspan="6"><div class="empty-state">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+              <div>Sin eventos. Cargando...</div>
+            </div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <!-- CUBE STATE -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Estado del Cubo</span>
+          <span style="font-size:10px; font-family: var(--mono); color: var(--text3);" id="lastFace">—</span>
+        </div>
+        <div class="panel-body">
+          <div class="cube-3d-wrap" id="cubeVis">
+            <div style="color: var(--text3); font-family: var(--mono); font-size: 11px; text-align: center;">Esperando datos...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ACTIVIDAD -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Actividad Reciente</span>
+          <span style="font-size:10px; font-family: var(--mono); color: var(--text3);">últimas 24 barras</span>
+        </div>
+        <div class="panel-body">
+          <div class="activity-bar" id="activityBars"></div>
+          <div style="display:flex; justify-content:space-between; margin-top: 6px;">
+            <span style="font-size:9px; font-family:var(--mono); color:var(--text3);">más antiguo</span>
+            <span style="font-size:9px; font-family:var(--mono); color:var(--text3);">más reciente</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- SERVER INFO -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Conexión Backend</span>
+        </div>
+        <div class="panel-body" style="padding: 10px 18px;">
+          <div class="server-row">
+            <div>
+              <div class="server-name">API Eventos</div>
+              <div class="server-url" id="apiUrl">http://localhost:5000/api/eventos</div>
+            </div>
+            <div class="server-status" id="apiStatus">
+              <div class="loader"></div> <span style="color:var(--text3)">comprobando</span>
+            </div>
+          </div>
+          <div class="server-row">
+            <div>
+              <div class="server-name">MongoDB</div>
+              <div class="server-url">vía backend (puerto 27017)</div>
+            </div>
+            <div class="server-status" id="dbStatus">
+              <div class="loader"></div> <span style="color:var(--text3)">comprobando</span>
+            </div>
+          </div>
+          <div style="margin-top: 14px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom: 4px;">
+              <span style="font-size:10px; font-family:var(--mono); color:var(--text3);">Eventos almacenados</span>
+              <span style="font-size:10px; font-family:var(--mono); color:var(--accent);" id="totalEvents">0</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="eventProgress" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let allEvents = [];
+let timeChartInstance = null;
+let typeChartInstance = null;
+
+const CHART_COLORS = {
+  cubo_resuelto: '#00e5a0',
+  movimiento: '#4da6ff',
+  error: '#ff4d6d',
+  calibracion: '#ffb347',
+  default: '#8890a4'
+};
+
+function getBaseUrl() {
+  const ip = document.getElementById('serverIp').value.trim() || 'localhost';
+  return `http://${ip}:5000`;
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = ''; }, 3500);
+}
+
+function formatTimestamp(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  return d.toLocaleString('es-GT', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function getBadgeClass(tipo) {
+  if (!tipo) return '';
+  const t = tipo.toLowerCase();
+  if (t.includes('resuelto')) return 'solved';
+  if (t.includes('movimiento') || t.includes('giro')) return 'move';
+  if (t.includes('error') || t.includes('fallo')) return 'error';
+  if (t.includes('calibr')) return 'calibrate';
+  return 'move';
+}
+
+function getCubeColor(cara) {
+  const map = {
+    'frontal': '#4da6ff', 'front': '#4da6ff',
+    'trasera': '#ff4d6d', 'back': '#ff4d6d',
+    'superior': '#fff', 'top': '#fff', 'arriba': '#fff',
+    'inferior': '#ffee55', 'bottom': '#ffee55', 'abajo': '#ffee55',
+    'izquierda': '#ff8c00', 'left': '#ff8c00',
+    'derecha': '#00e5a0', 'right': '#00e5a0',
+  };
+  if (!cara) return '#555e72';
+  return map[cara.toLowerCase()] || '#4da6ff';
+}
+
+function renderCube(lastEvent) {
+  const vis = document.getElementById('cubeVis');
+  if (!lastEvent) { vis.innerHTML = '<div style="color:var(--text3);font-family:var(--mono);font-size:11px;text-align:center;">Esperando datos...</div>'; return; }
+  const cara = lastEvent.cara_cubo || '';
+  const grados = lastEvent.grados_motor || 0;
+  document.getElementById('lastFace').textContent = cara ? `Cara: ${cara} | ${grados}°` : '—';
+
+  const faceColors = {
+    'U': getCubeColor('superior'), 'D': getCubeColor('inferior'),
+    'F': getCubeColor('frontal'), 'B': getCubeColor('trasera'),
+    'L': getCubeColor('izquierda'), 'R': getCubeColor('derecha'),
+  };
+  const activeFace = cara ? (cara.charAt(0).toUpperCase()) : 'F';
+  const labels = ['U', 'F', 'R', 'B', 'L', 'D'];
+  const gridPos = { U: [0,1], F: [1,1], R: [1,2], B: [1,3], L: [1,0], D: [2,1] };
+
+  const grid = Array.from({ length: 3 }, () => Array(4).fill(null));
+  labels.forEach(k => {
+    const [r, c] = gridPos[k];
+    grid[r][c] = k;
+  });
+
+  let html = '<div style="display:grid; grid-template-columns: repeat(4, 70px); grid-template-rows: repeat(3, 70px); gap: 3px;">';
+  for (let r = 0; r < 3; r++) {
+    for (let c = 0; c < 4; c++) {
+      const k = grid[r][c];
+      if (!k) { html += '<div></div>'; continue; }
+      const isActive = k === activeFace;
+      const col = faceColors[k];
+      html += `<div style="background:${isActive ? col : 'var(--bg3)'}; border: 1px solid ${isActive ? col : 'var(--border2)'}; border-radius:6px; display:flex; align-items:center; justify-content:center; flex-direction:column; transition: all 0.4s ease; ${isActive ? 'box-shadow: 0 0 16px ' + col + '44;' : ''}">
+        <div style="display:grid; grid-template-columns: repeat(3,1fr); gap:2px; padding:6px; width:100%">
+          ${[...Array(9)].map((_, i) => {
+            let cellCol = isActive ? (i === 4 ? '#fff' : col + 'aa') : 'var(--bg2)';
+            return `<div style="height:12px; border-radius:2px; background:${cellCol}; border:1px solid rgba(0,0,0,0.2)"></div>`;
+          }).join('')}
+        </div>
+        <div style="font-size:9px; font-family:var(--mono); color:${isActive ? 'rgba(255,255,255,0.8)' : 'var(--text3)'}; margin-bottom:4px;">${k}</div>
+      </div>`;
+    }
+  }
+  html += '</div>';
+  vis.innerHTML = html;
+}
+
+function renderActivityBars(events) {
+  const container = document.getElementById('activityBars');
+  const N = 24;
+  const recent = events.slice(0, N).reverse();
+  const max = recent.length > 0 ? Math.max(...recent.map(e => e.cantidad_movimientos || 1)) : 1;
+  let html = '';
+  for (let i = 0; i < N; i++) {
+    const ev = recent[i];
+    if (!ev) { html += `<div class="a-bar empty" style="height:8px;" title="Sin dato"></div>`; continue; }
+    const h = Math.max(8, Math.round(((ev.cantidad_movimientos || 1) / max) * 52));
+    const tipo = ev.tipo_accion || '';
+    const col = CHART_COLORS[tipo] || CHART_COLORS.default;
+    html += `<div class="a-bar" style="height:${h}px; background: ${col}22; border-top: 1px solid ${col};" title="${tipo}: ${ev.cantidad_movimientos || 0} movs. | ${formatTimestamp(ev.timestamp)}"></div>`;
+  }
+  container.innerHTML = html;
+}
+
+function renderMetrics(events) {
+  const solved = events.filter(e => e.tipo_accion && e.tipo_accion.toLowerCase().includes('resuelto'));
+  document.getElementById('metSolved').textContent = solved.length;
+  document.getElementById('metSolvedSub').textContent = `de ${events.length} eventos totales`;
+  document.getElementById('totalEvents').textContent = events.length;
+  document.getElementById('eventProgress').style.width = Math.min(events.length, 100) + '%';
+
+  const withTime = events.filter(e => e.tiempo_armado_segundos > 0);
+  if (withTime.length) {
+    const avg = withTime.reduce((s, e) => s + e.tiempo_armado_segundos, 0) / withTime.length;
+    document.getElementById('metAvgTime').textContent = avg.toFixed(1) + 's';
+  } else { document.getElementById('metAvgTime').textContent = '—'; }
+
+  const withMoves = events.filter(e => e.cantidad_movimientos > 0);
+  if (withMoves.length) {
+    const avg = withMoves.reduce((s, e) => s + e.cantidad_movimientos, 0) / withMoves.length;
+    document.getElementById('metAvgMoves').textContent = Math.round(avg);
+  } else { document.getElementById('metAvgMoves').textContent = '—'; }
+
+  if (events.length > 0) {
+    const last = events[0];
+    document.getElementById('metLast').textContent = last.tipo_accion || '—';
+    document.getElementById('metLastSub').textContent = formatTimestamp(last.timestamp);
+  }
+}
+
+function renderTable(events) {
+  const filter = document.getElementById('filterType').value.toLowerCase();
+  const filtered = filter ? events.filter(e => (e.tipo_accion || '').toLowerCase().includes(filter)) : events;
+  const tbody = document.getElementById('logBody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div>No hay eventos que mostrar</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(e => `
+    <tr>
+      <td><span class="badge ${getBadgeClass(e.tipo_accion)}">${e.tipo_accion || '—'}</span></td>
+      <td>${e.cara_cubo || '—'}</td>
+      <td>${e.grados_motor != null ? e.grados_motor + '°' : '—'}</td>
+      <td>${e.cantidad_movimientos != null ? e.cantidad_movimientos : '—'}</td>
+      <td style="color: var(--accent);">${e.tiempo_armado_segundos != null ? e.tiempo_armado_segundos.toFixed(2) : '—'}</td>
+      <td style="color: var(--text3);">${formatTimestamp(e.timestamp)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderCharts(events) {
+  document.getElementById('chartCount').textContent = events.length + ' eventos';
+
+  // Time chart
+  const recentEvents = events.slice(0, 20).reverse();
+  const timeLabels = recentEvents.map((e, i) => '#' + (i + 1));
+  const timeData = recentEvents.map(e => e.tiempo_armado_segundos || 0);
+  const movData = recentEvents.map(e => e.cantidad_movimientos || 0);
+
+  const tCtx = document.getElementById('timeChart').getContext('2d');
+  if (timeChartInstance) timeChartInstance.destroy();
+  timeChartInstance = new Chart(tCtx, {
+    type: 'line',
+    data: {
+      labels: timeLabels,
+      datasets: [
+        {
+          label: 'Tiempo (s)',
+          data: timeData,
+          borderColor: '#00e5a0',
+          backgroundColor: 'rgba(0,229,160,0.08)',
+          borderWidth: 2,
+          pointBackgroundColor: '#00e5a0',
+          pointRadius: 3,
+          fill: true,
+          tension: 0.4,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Movimientos',
+          data: movData,
+          borderColor: '#4da6ff',
+          backgroundColor: 'rgba(77,166,255,0.05)',
+          borderWidth: 2,
+          pointBackgroundColor: '#4da6ff',
+          pointRadius: 3,
+          fill: false,
+          tension: 0.4,
+          borderDash: [4, 3],
+          yAxisID: 'y1',
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#555e72', font: { family: 'Space Mono', size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#00e5a0', font: { family: 'Space Mono', size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, position: 'left' },
+        y1: { ticks: { color: '#4da6ff', font: { family: 'Space Mono', size: 9 } }, grid: { display: false }, position: 'right' }
+      }
+    }
+  });
+
+  // Type donut
+  const typeCounts = {};
+  events.forEach(e => { const t = e.tipo_accion || 'desconocido'; typeCounts[t] = (typeCounts[t] || 0) + 1; });
+  const typeLabels = Object.keys(typeCounts);
+  const typeValues = Object.values(typeCounts);
+  const typeColors = typeLabels.map(t => CHART_COLORS[t] || CHART_COLORS.default);
+
+  const dCtx = document.getElementById('typeChart').getContext('2d');
+  if (typeChartInstance) typeChartInstance.destroy();
+  typeChartInstance = new Chart(dCtx, {
+    type: 'doughnut',
+    data: { labels: typeLabels, datasets: [{ data: typeValues, backgroundColor: typeColors, borderColor: '#161920', borderWidth: 3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '68%',
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  const total = events.length;
+  document.getElementById('typeLegend').innerHTML = typeLabels.map((label, i) => `
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:7px;">
+        <div style="width:8px;height:8px;border-radius:2px;background:${typeColors[i]};flex-shrink:0"></div>
+        <span style="font-size:11px;font-family:var(--mono);color:var(--text2);">${label}</span>
+      </div>
+      <span style="font-size:11px;font-family:var(--mono);color:${typeColors[i]};">${typeValues[i]} <span style="color:var(--text3)">(${Math.round(typeValues[i]/total*100)}%)</span></span>
+    </div>
+  `).join('');
+}
+
+function setConnectionStatus(online) {
+  const dot = document.getElementById('connDot');
+  const txt = document.getElementById('connText');
+  const apiStatus = document.getElementById('apiStatus');
+  const dbStatus = document.getElementById('dbStatus');
+  if (online) {
+    dot.className = 'dot';
+    txt.textContent = 'CONECTADO';
+    txt.style.color = 'var(--accent)';
+    apiStatus.innerHTML = `<div style="width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent)"></div> <span style="color:var(--accent)">online</span>`;
+    dbStatus.innerHTML = `<div style="width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent)"></div> <span style="color:var(--accent)">online</span>`;
+  } else {
+    dot.className = 'dot offline';
+    txt.textContent = 'OFFLINE';
+    txt.style.color = 'var(--red)';
+    apiStatus.innerHTML = `<div style="width:7px;height:7px;border-radius:50%;background:var(--red)"></div> <span style="color:var(--red)">offline</span>`;
+    dbStatus.innerHTML = `<div style="width:7px;height:7px;border-radius:50%;background:var(--red)"></div> <span style="color:var(--red)">desconocido</span>`;
+  }
+  document.getElementById('apiUrl').textContent = getBaseUrl() + '/api/eventos';
+}
+
+async function loadData() {
+  const btn = document.getElementById('btnRefresh');
+  const icon = document.getElementById('refreshIcon');
+  btn.disabled = true;
+  icon.style.animation = 'spin 0.6s linear infinite';
+
+  try {
+    const url = getBaseUrl() + '/api/eventos';
+    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    allEvents = Array.isArray(data) ? data : [];
+    setConnectionStatus(true);
+    renderMetrics(allEvents);
+    renderTable(allEvents);
+    renderCharts(allEvents);
+    renderActivityBars(allEvents);
+    renderCube(allEvents[0] || null);
+    showToast(`✓ ${allEvents.length} eventos cargados`, 'ok');
+  } catch (e) {
+    setConnectionStatus(false);
+    showToast('No se pudo conectar al backend. Verifica la IP y que Docker esté corriendo.', 'err');
+    // Demo data
+    loadDemoData();
+  } finally {
+    btn.disabled = false;
+    icon.style.animation = '';
+  }
+}
+
+function loadDemoData() {
+  const tipos = ['cubo_resuelto', 'movimiento', 'calibracion', 'error'];
+  const caras = ['Frontal', 'Trasera', 'Superior', 'Inferior', 'Izquierda', 'Derecha'];
+  const now = Date.now();
+  allEvents = Array.from({ length: 30 }, (_, i) => ({
+    _id: 'demo_' + i,
+    tipo_accion: tipos[Math.floor(Math.random() * tipos.length)],
+    grados_motor: [45, 90, 180, 270][Math.floor(Math.random() * 4)],
+    cara_cubo: caras[Math.floor(Math.random() * caras.length)],
+    cantidad_movimientos: Math.floor(Math.random() * 50) + 10,
+    tiempo_armado_segundos: parseFloat((Math.random() * 30 + 5).toFixed(2)),
+    timestamp: new Date(now - i * 1000 * 60 * (Math.random() * 10 + 1)).toISOString()
+  }));
+  renderMetrics(allEvents);
+  renderTable(allEvents);
+  renderCharts(allEvents);
+  renderActivityBars(allEvents);
+  renderCube(allEvents[0]);
+  showToast('Modo demo activo — conecta el backend para datos reales', '');
+}
+
+// Filter listener
+document.getElementById('filterType').addEventListener('change', () => renderTable(allEvents));
+document.getElementById('serverIp').addEventListener('change', () => {
+  document.getElementById('apiUrl').textContent = getBaseUrl() + '/api/eventos';
+  loadData();
+});
+
+// Auto-refresh cada 10s
+setInterval(loadData, 10000);
+
+// Initial load
+loadData();
+</script>
+</body>
+</html>
