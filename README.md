@@ -130,7 +130,7 @@ git clone https://github.com/mane-23-app/Rubik-monitoring-system-.git
 ## Entrar al proyecto
 
 ```bash
-cd Rubik-monitoring-system
+cd Rubik-monitoring-system-
 ```
 
 ---
