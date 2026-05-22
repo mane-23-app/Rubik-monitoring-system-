@@ -1,0 +1,8 @@
+{
+  "name": "frontend-rubik",
+  "version": "1.0.0",
+  "description": "Interfaz web del Robot Rubik",
+  "scripts": {
+    "start": "npx http-server ./ -p 3000"
+  }
+}
