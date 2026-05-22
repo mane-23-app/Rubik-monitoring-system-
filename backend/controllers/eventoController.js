@@ -12,37 +12,35 @@ exports.getEventos = async (req, res) => {
   }
 };
 
-// Crear un nuevo evento
+// Crear un nuevo evento (Arquitectura de Telemetría y Monitoreo)
 exports.crearEvento = async (req, res) => {
   try {
-    console.log("📥 Evento recibido desde Arduino:", req.body); // LOG EN CONSOLA
+    // Actualizamos el log para reflejar que la petición viene de la App Web
+    console.log("📥 Evento de telemetría recibido desde el Frontend:", req.body); 
 
-    // 1. VALIDACIÓN: Campos obligatorios
-    const { tipo_accion, grados_motor, cara_cubo, cantidad_movimientos, tiempo_armado_segundos } = req.body;
+    // 1. VALIDACIÓN: Campos adaptados al nuevo modelo de eventos
+    const { tipo_evento, detalles } = req.body;
     
-    if (!tipo_accion) {
-      return res.status(400).json({ error: "El campo 'tipo_accion' es obligatorio." });
+    if (!tipo_evento) {
+      return res.status(400).json({ error: "El campo 'tipo_evento' es obligatorio." });
     }
 
     // 2. CREACIÓN
     const nuevoEvento = new Evento({
-      tipo_accion,
-      grados_motor,
-      cara_cubo,
-      cantidad_movimientos,
-      tiempo_armado_segundos
+      tipo_evento,
+      fecha_hora: new Date(),
+      detalles // Aquí entra cualquier dato extra en formato JSON (movimientos, errores, etc.)
     });
 
     const eventoGuardado = await nuevoEvento.save();
     
     // 3. RESPUESTA EXITOSA (201)
     res.status(201).json({
-      mensaje: "Evento registrado exitosamente",
+      mensaje: "Evento registrado exitosamente en MongoDB",
       data: eventoGuardado
     });
 
   } catch (error) {
-    // RESPUESTA DE ERROR DEL SERVIDOR (500)
     console.error("❌ Error al guardar en MongoDB:", error.message);
     res.status(500).json({ error: "No se pudo guardar el evento en la base de datos", detalle: error.message });
   }
