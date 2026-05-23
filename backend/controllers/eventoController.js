@@ -18,18 +18,30 @@ exports.crearEvento = async (req, res) => {
     // Actualizamos el log para reflejar que la petición viene de la App Web
     console.log("📥 Evento de telemetría recibido desde el Frontend:", req.body); 
 
-    // 1. VALIDACIÓN: Campos adaptados al nuevo modelo de eventos
-    const { tipo_evento, detalles } = req.body;
+    // 1. VALIDACIÓN: Mantenemos tu forma exacta de recibir los datos
+    const { 
+      tipo_evento, 
+      detalles, 
+      grados_motor, 
+      cara_cubo, 
+      cantidad_movimientos, 
+      tiempo_armado_segundos 
+    } = req.body;
     
     if (!tipo_evento) {
       return res.status(400).json({ error: "El campo 'tipo_evento' es obligatorio." });
     }
 
-    // 2. CREACIÓN
+    // 2. CREACIÓN: Hacemos el puente (tipo_accion: tipo_evento) para Mongoose
     const nuevoEvento = new Evento({
-      tipo_evento,
+      tipo_accion: tipo_evento, // <--- EL CAMBIO CLAVE PARA EVITAR EL ERROR 500
       fecha_hora: new Date(),
-      detalles // Aquí entra cualquier dato extra en formato JSON (movimientos, errores, etc.)
+      detalles, 
+      // Añadimos estos para que el historial en tu panel web tenga datos reales
+      grados_motor,
+      cara_cubo,
+      cantidad_movimientos,
+      tiempo_armado_segundos
     });
 
     const eventoGuardado = await nuevoEvento.save();
