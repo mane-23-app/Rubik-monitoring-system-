@@ -3,7 +3,6 @@ const Evento = require('../models/Evento');
 // Obtener todos los eventos
 exports.getEventos = async (req, res) => {
   try {
-    // .sort({ createdAt: -1 }) los ordena del más nuevo al más viejo
     const eventos = await Evento.find().sort({ createdAt: -1 });
     res.status(200).json(eventos);
   } catch (error) {
@@ -12,15 +11,15 @@ exports.getEventos = async (req, res) => {
   }
 };
 
-// Crear un nuevo evento (Arquitectura de Telemetría y Monitoreo)
+// Crear un nuevo evento
 exports.crearEvento = async (req, res) => {
   try {
-    // Actualizamos el log para reflejar que la petición viene de la App Web
     console.log("📥 Evento de telemetría recibido desde el Frontend:", req.body); 
 
-    // 1. VALIDACIÓN: Mantenemos tu forma exacta de recibir los datos
+    // Extraemos AMBAS posibles palabras por si el frontend cambia de nombre
     const { 
       tipo_evento, 
+      tipo_accion, 
       detalles, 
       grados_motor, 
       cara_cubo, 
@@ -28,16 +27,17 @@ exports.crearEvento = async (req, res) => {
       tiempo_armado_segundos 
     } = req.body;
     
-    if (!tipo_evento) {
-      return res.status(400).json({ error: "El campo 'tipo_evento' es obligatorio." });
+    // TRUCO PRO: Usamos tipo_accion, pero si viene vacío, usamos tipo_evento
+    const accionFinal = tipo_accion || tipo_evento;
+
+    if (!accionFinal) {
+      return res.status(400).json({ error: "El campo 'tipo_accion' o 'tipo_evento' es obligatorio." });
     }
 
-    // 2. CREACIÓN: Hacemos el puente (tipo_accion: tipo_evento) para Mongoose
     const nuevoEvento = new Evento({
-      tipo_accion: tipo_evento, // <--- EL CAMBIO CLAVE PARA EVITAR EL ERROR 500
+      tipo_accion: accionFinal, // Guardamos la variable correcta
       fecha_hora: new Date(),
       detalles, 
-      // Añadimos estos para que el historial en tu panel web tenga datos reales
       grados_motor,
       cara_cubo,
       cantidad_movimientos,
@@ -46,7 +46,6 @@ exports.crearEvento = async (req, res) => {
 
     const eventoGuardado = await nuevoEvento.save();
     
-    // 3. RESPUESTA EXITOSA (201)
     res.status(201).json({
       mensaje: "Evento registrado exitosamente en MongoDB",
       data: eventoGuardado
