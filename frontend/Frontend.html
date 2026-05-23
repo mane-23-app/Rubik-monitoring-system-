@@ -367,9 +367,11 @@ function renderTable(events) {
   const f = document.getElementById('filterType').value.toLowerCase();
   const filtered = f ? events.filter(e=>(e.tipo_accion||'').toLowerCase().includes(f)) : events;
   const tbody = document.getElementById('logBody');
+  
   if (!filtered.length) {
     tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">Sin eventos registrados aún</div></td></tr>'; return;
   }
+  
   tbody.innerHTML = filtered.map(e => `
     <tr>
       <td><span class="badge ${badgeClass(e.tipo_accion)}">${e.tipo_accion||'—'}</span></td>
@@ -377,7 +379,9 @@ function renderTable(events) {
       <td>${e.grados_motor!=null?e.grados_motor+'°':'—'}</td>
       <td>${e.cantidad_movimientos!=null?e.cantidad_movimientos:'—'}</td>
       <td style="color:var(--accent)">${e.tiempo_armado_segundos!=null?e.tiempo_armado_segundos.toFixed(2):'—'}</td>
-      <td style="color:var(--text3)">${fmt(e.timestamp)}</td>
+      <td style="color:var(--text3)">
+        ${e.createdAt ? new Date(e.createdAt).toLocaleString() : '—'}
+      </td>
     </tr>`).join('');
 }
 
