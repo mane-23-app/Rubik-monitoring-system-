@@ -364,6 +364,8 @@ function renderMetrics(events) {
 }
 
 function renderTable(events) {
+  console.log("Total de eventos recibidos:", events.length); // <--- AÑADE ESTO
+  
   const f = document.getElementById('filterType').value.toLowerCase();
   const filtered = f ? events.filter(e => (e.tipo_accion || '').toLowerCase().includes(f)) : events;
   const tbody = document.getElementById('logBody');
